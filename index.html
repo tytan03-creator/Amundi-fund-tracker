@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Amundi Fund Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0e13;
+      --surface: #111820;
+      --border: #1e2d3d;
+      --accent: #00c8ff;
+      --green: #00e676;
+      --red: #ff4444;
+      --muted: #4a6070;
+      --text: #c8d8e8;
+      --head: #e8f4ff;
+    }
+
+```
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+}
+
+header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--head);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+header .meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.error-msg {
+  background: #1a0a0a;
+  border: 1px solid #440000;
+  color: #ff8888;
+  padding: 16px;
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  margin-bottom: 20px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  min-width: 560px;
+}
+
+thead tr {
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+}
+
+thead th {
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+thead th:first-child {
+  color: var(--text);
+  min-width: 90px;
+}
+
+thead th a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+  padding-bottom: 1px;
+  transition: opacity 0.2s;
+}
+
+thead th a:hover { opacity: 0.7; }
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+tbody tr:hover { background: #111e2a; }
+
+tbody tr:last-child { border-bottom: none; }
+
+td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+td:first-child {
+  color: var(--text);
+  font-size: 0.7rem;
+}
+
+.price-cell {
+  text-align: right;
+}
+
+.price-val {
+  color: var(--head);
+  font-weight: 600;
+}
+
+.pct {
+  font-size: 0.65rem;
+  margin-left: 4px;
+}
+
+.pct.pos { color: var(--green); }
+.pct.neg { color: var(--red); }
+.pct.neu { color: var(--muted); }
+
+.ytd-row {
+  background: #0d1a10 !important;
+  border-top: 2px solid var(--border);
+}
+
+.ytd-row td:first-child {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.ytd-val {
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.ytd-val.pos { color: var(--green); }
+.ytd-val.neg { color: var(--red); }
+
+.refresh-btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: background 0.2s, color 0.2s;
+}
+
+.refresh-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.loading {
+  text-align: center;
+  padding: 48px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+.dot-anim::after {
+  content: '';
+  animation: dots 1.2s steps(3, end) infinite;
+}
+
+@keyframes dots {
+  0%   { content: ''; }
+  33%  { content: '.'; }
+  66%  { content: '..'; }
+  100% { content: '...'; }
+}
+```
+
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Amundi Fund Tracker</h1>
+  <div class="meta" id="last-updated">Loading<span class="dot-anim"></span></div>
+</header>
+
+<div id="content">
+  <div class="loading">Fetching fund data<span class="dot-anim"></span></div>
+</div>
+
+<a class="refresh-btn" href="javascript:location.reload()">↻ Refresh</a>
+
+<script>
+const FUND_ORDER = ["LU2420245917", "LU2420246139", "LU2420246055", "LU2420246212"];
+
+const SHORT_LABELS = {
+  "LU2420245917": "S&P 500 ESG",
+  "LU2420246139": "MSCI World",
+  "LU2420246055": "MSCI EM",
+  "LU2420246212": "MSCI Europe"
+};
+
+function fmt(val, decimals = 4) {
+  return val != null ? val.toFixed(decimals) : "—";
+}
+
+function pctHtml(val, cls = "pct") {
+  if (val == null) return `<span class="${cls} neu">—</span>`;
+  const sign = val >= 0 ? "+" : "";
+  const klass = val > 0 ? "pos" : val < 0 ? "neg" : "neu";
+  return `<span class="${cls} ${klass}">(${sign}${val.toFixed(2)}%)</span>`;
+}
+
+async function loadData() {
+  try {
+    const res = await fetch("data.json?t=" + Date.now());
+    if (!res.ok) throw new Error("data.json not found");
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function render(data) {
+  const el = document.getElementById("content");
+  const upd = document.getElementById("last-updated");
+
+  if (!data) {
+    el.innerHTML = `<div class="error-msg">⚠ Could not load data.json — the scraper may not have run yet.<br>Trigger it manually in GitHub Actions → Run workflow.</div>`;
+    upd.textContent = "No data available";
+    return;
+  }
+
+  upd.textContent = "Last updated: " + data.last_updated;
+
+  const funds = data.funds;
+  const allDates = new Set();
+  FUND_ORDER.forEach(id => {
+    if (funds[id]) funds[id].prices.forEach(p => allDates.add(p.date));
+  });
+
+  // Collect unique dates in order (most recent first)
+  const datesArr = [...allDates].slice(0, 5);
+
+  // Build header
+  let html = `<div class="table-wrapper"><table>
+    <thead><tr>
+      <th>Date</th>`;
+
+  FUND_ORDER.forEach(id => {
+    const f = funds[id];
+    if (!f) { html += `<th>${SHORT_LABELS[id]}</th>`; return; }
+    html += `<th><a href="${f.url}" target="_blank">${SHORT_LABELS[id]}</a></th>`;
+  });
+
+  html += `</tr></thead><tbody>`;
+
+  // Data rows
+  datesArr.forEach(date => {
+    html += `<tr><td>${date}</td>`;
+    FUND_ORDER.forEach(id => {
+      const f = funds[id];
+      const entry = f ? f.prices.find(p => p.date === date) : null;
+      if (!entry) {
+        html += `<td class="price-cell">—</td>`;
+      } else {
+        html += `<td class="price-cell">
+          <span class="price-val">${fmt(entry.price)}</span>
+          ${pctHtml(entry.pct_change)}
+        </td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+
+  // YTD row
+  html += `<tr class="ytd-row"><td>YTD (vs 2 Jan)</td>`;
+  FUND_ORDER.forEach(id => {
+    const f = funds[id];
+    if (!f || f.ytd_pct == null) {
+      html += `<td class="price-cell">—</td>`;
+    } else {
+      html += `<td class="price-cell">${pctHtml(f.ytd_pct, "ytd-val")}</td>`;
+    }
+  });
+  html += `</tr>`;
+
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+loadData().then(render);
+</script>
+
+</body>
+</html>
