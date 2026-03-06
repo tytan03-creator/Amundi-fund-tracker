@@ -1,34 +1,30 @@
 import json
 import re
 import time
-from datetime import datetime, date
+from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 FUNDS = [
 {
 “id”: “LU2420245917”,
-“name”: “Amundi S&P 500 ESG”,
 “short”: “S&P 500 ESG”,
 “url”: “https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420245917:SGD”,
 “summary_url”: “https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420245917:SGD”
 },
 {
 “id”: “LU2420246139”,
-“name”: “Amundi MSCI World”,
 “short”: “MSCI World”,
 “url”: “https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246139:SGD”,
 “summary_url”: “https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246139:SGD”
 },
 {
 “id”: “LU2420246055”,
-“name”: “Amundi MSCI EM”,
 “short”: “MSCI EM”,
 “url”: “https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246055:SGD”,
 “summary_url”: “https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246055:SGD”
 },
 {
 “id”: “LU2420246212”,
-“name”: “Amundi MSCI Europe”,
 “short”: “MSCI Europe”,
 “url”: “https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246212:SGD”,
 “summary_url”: “https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246212:SGD”
@@ -36,14 +32,12 @@ FUNDS = [
 ]
 
 def scrape_fund(page, fund):
-print(f”Scraping {fund[‘short’]}…”)
+print(“Scraping “ + fund[“short”] + “…”)
 page.goto(fund[“url”], wait_until=“networkidle”, timeout=60000)
 time.sleep(3)
+page.wait_for_selector(“table”, timeout=30000)
 
 ```
-# Wait for the historical table
-page.wait_for_selector("table", timeout=30000)
-
 rows = page.query_selector_all("table tbody tr")
 prices = []
 
@@ -52,16 +46,10 @@ for row in rows:
     if len(cols) >= 2:
         date_text = cols[0].inner_text().strip()
         price_text = cols[1].inner_text().strip()
-
-        # Clean price
         price_clean = re.sub(r"[^\d.]", "", price_text)
-
         try:
             price_val = float(price_clean)
-            prices.append({
-                "date": date_text,
-                "price": price_val
-            })
+            prices.append({"date": date_text, "price": price_val})
         except ValueError:
             continue
 
@@ -69,7 +57,6 @@ return prices
 ```
 
 def calculate_changes(prices):
-“”“Add daily % change to each price entry”””
 result = []
 for i, entry in enumerate(prices):
 if i < len(prices) - 1:
@@ -77,7 +64,7 @@ prev_price = prices[i + 1][“price”]
 curr_price = entry[“price”]
 pct_change = ((curr_price - prev_price) / prev_price) * 100
 else:
-pct_change = None  # No previous day for oldest entry
+pct_change = None
 result.append({
 “date”: entry[“date”],
 “price”: entry[“price”],
@@ -86,21 +73,12 @@ result.append({
 return result
 
 def find_jan2_price(prices):
-“”“Find the price on or nearest to Jan 2 2026”””
-target = “Jan 02, 2026”
-target_keywords = [“Jan 02”, “Jan 2”]
-
-```
-for entry in reversed(prices):  # oldest first
-    for kw in target_keywords:
-        if kw in entry["date"] and "2026" in entry["date"]:
-            return entry["price"]
-
-# Fallback: return oldest available price
+for entry in reversed(prices):
+if (“Jan 02” in entry[“date”] or “Jan 2,” in entry[“date”]) and “2026” in entry[“date”]:
+return entry[“price”]
 if prices:
-    return prices[-1]["price"]
+return prices[-1][“price”]
 return None
-```
 
 def main():
 all_data = {}
@@ -117,14 +95,10 @@ with sync_playwright() as p:
         try:
             raw_prices = scrape_fund(page, fund)
             if not raw_prices:
-                print(f"  ⚠️ No prices found for {fund['short']}")
+                print("  No prices found for " + fund["short"])
                 continue
 
-            # Last 5 trading days + calculate changes
-            last5 = raw_prices[:5]
             priced = calculate_changes(raw_prices)[:5]
-
-            # YTD base price (Jan 2 2026)
             jan2_price = find_jan2_price(raw_prices)
             latest_price = raw_prices[0]["price"] if raw_prices else None
             ytd_pct = None
@@ -132,7 +106,6 @@ with sync_playwright() as p:
                 ytd_pct = ((latest_price - jan2_price) / jan2_price) * 100
 
             all_data[fund["id"]] = {
-                "name": fund["name"],
                 "short": fund["short"],
                 "url": fund["summary_url"],
                 "historical_url": fund["url"],
@@ -140,14 +113,13 @@ with sync_playwright() as p:
                 "jan2_price": jan2_price,
                 "ytd_pct": ytd_pct
             }
-            print(f"  ✅ Got {len(priced)} days of data")
+            print("  Got " + str(len(priced)) + " days of data")
 
         except Exception as e:
-            print(f"  ❌ Error scraping {fund['short']}: {e}")
+            print("  Error scraping " + fund["short"] + ": " + str(e))
 
     browser.close()
 
-# Save to JSON
 output = {
     "last_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     "funds": all_data
@@ -156,8 +128,7 @@ output = {
 with open("data.json", "w") as f:
     json.dump(output, f, indent=2)
 
-print(f"\n✅ Done! Data saved to data.json")
-print(f"Last updated: {output['last_updated']}")
+print("Done! Data saved to data.json")
 ```
 
 if **name** == “**main**”:
