@@ -28,7 +28,81 @@ jobs:
           playwright install-deps chromium
 
       - name: Write scraper
-        run: python3 generate_scraper.py
+        run: |
+          python3 - <<'PYEOF'
+          import sys
+          q = chr(34)
+          lines = [
+            "import json, re, time",
+            "from datetime import datetime",
+            "from playwright.sync_api import sync_playwright",
+            "",
+            "FUNDS = [",
+            "  {" + q + "id" + q + ":" + q + "LU2420245917" + q + "," + q + "short" + q + ":" + q + "S&P 500 ESG" + q + "," + q + "url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420245917:SGD" + q + "," + q + "summary_url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420245917:SGD" + q + "},",
+            "  {" + q + "id" + q + ":" + q + "LU2420246139" + q + "," + q + "short" + q + ":" + q + "MSCI World" + q + "," + q + "url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246139:SGD" + q + "," + q + "summary_url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246139:SGD" + q + "},",
+            "  {" + q + "id" + q + ":" + q + "LU2420246055" + q + "," + q + "short" + q + ":" + q + "MSCI EM" + q + "," + q + "url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246055:SGD" + q + "," + q + "summary_url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246055:SGD" + q + "},",
+            "  {" + q + "id" + q + ":" + q + "LU2420246212" + q + "," + q + "short" + q + ":" + q + "MSCI Europe" + q + "," + q + "url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/historical?s=LU2420246212:SGD" + q + "," + q + "summary_url" + q + ":" + q + "https://markets.ft.com/data/funds/tearsheet/summary?s=LU2420246212:SGD" + q + "},",
+            "]",
+            "",
+            "def scrape_fund(page, fund):",
+            "  print(fund[" + q + "short" + q + "])",
+            "  page.goto(fund[" + q + "url" + q + "], wait_until=" + q + "networkidle" + q + ", timeout=60000)",
+            "  time.sleep(3)",
+            "  page.wait_for_selector(" + q + "table" + q + ", timeout=30000)",
+            "  rows = page.query_selector_all(" + q + "table tbody tr" + q + ")",
+            "  prices = []",
+            "  for row in rows:",
+            "    cols = row.query_selector_all(" + q + "td" + q + ")",
+            "    if len(cols) >= 2:",
+            "      dt = cols[0].inner_text().strip()",
+            "      pt = cols[1].inner_text().strip()",
+            "      pc = re.sub(r" + q + "[^\\d.]" + q + ", " + q + q + ", pt)",
+            "      try:",
+            "        prices.append({" + q + "date" + q + ":dt," + q + "price" + q + ":float(pc)})",
+            "      except ValueError:",
+            "        continue",
+            "  return prices",
+            "",
+            "def calc(prices):",
+            "  result = []",
+            "  for i,e in enumerate(prices):",
+            "    chg = ((e[" + q + "price" + q + "]-prices[i+1][" + q + "price" + q + "])/prices[i+1][" + q + "price" + q + "])*100 if i<len(prices)-1 else None",
+            "    result.append({" + q + "date" + q + ":e[" + q + "date" + q + "]," + q + "price" + q + ":e[" + q + "price" + q + "]," + q + "pct_change" + q + ":chg})",
+            "  return result",
+            "",
+            "def jan2(prices):",
+            "  for e in reversed(prices):",
+            "    if (" + q + "Jan 02" + q + " in e[" + q + "date" + q + "] or " + q + "Jan 2," + q + " in e[" + q + "date" + q + "]) and " + q + "2026" + q + " in e[" + q + "date" + q + "]:",
+            "      return e[" + q + "price" + q + "]",
+            "  return prices[-1][" + q + "price" + q + "] if prices else None",
+            "",
+            "def main():",
+            "  data = {}",
+            "  with sync_playwright() as p:",
+            "    browser = p.chromium.launch(headless=True)",
+            "    page = browser.new_context(user_agent=" + q + "Mozilla/5.0" + q + ").new_page()",
+            "    for fund in FUNDS:",
+            "      try:",
+            "        raw = scrape_fund(page, fund)",
+            "        if not raw: continue",
+            "        j2 = jan2(raw)",
+            "        lp = raw[0][" + q + "price" + q + "]",
+            "        ytd = ((lp-j2)/j2)*100 if j2 and lp else None",
+            "        data[fund[" + q + "id" + q + "]] = {" + q + "short" + q + ":fund[" + q + "short" + q + "]," + q + "url" + q + ":fund[" + q + "summary_url" + q + "]," + q + "historical_url" + q + ":fund[" + q + "url" + q + "]," + q + "prices" + q + ":calc(raw)[:5]," + q + "jan2_price" + q + ":j2," + q + "ytd_pct" + q + ":ytd}",
+            "      except Exception as e:",
+            "        print(e)",
+            "    browser.close()",
+            "  out = {" + q + "last_updated" + q + ":datetime.utcnow().strftime(" + q + "%Y-%m-%d %H:%M UTC" + q + ")," + q + "funds" + q + ":data}",
+            "  json.dump(out, open(" + q + "data.json" + q + "," + q + "w" + q + "), indent=2)",
+            "  print(" + q + "Done!" + q + ")",
+            "",
+            "if __name__ == " + q + "__main__" + q + ":",
+            "  main()",
+          ]
+          with open("scraper.py", "w") as f:
+            f.write("\n".join(lines))
+          print("scraper.py written")
+          PYEOF
 
       - name: Run scraper
         run: python scraper.py
